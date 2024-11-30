@@ -5,7 +5,8 @@ namespace Backend.Services;
 
 public interface IFactService
 {
-    public Task<IResult> FetchAndSaveFactAsync();
+    Task<IResult> FetchAndSaveFactAsync();
+    Task<IResult> GetSavedFactsAsync();
 }
 
 public class FactService : IFactService
@@ -38,10 +39,10 @@ public class FactService : IFactService
                     statusCode: StatusCodes.Status500InternalServerError);
             }
 
-            var factEntry = $"Fact: {factResponse.Fact} | Length: {factResponse.Length}";
+            var factEntry = JsonSerializer.Serialize(factResponse);
             if (!File.Exists(FileName))
             {
-                using var strem = File.Create(FileName);
+                await using var stream = File.Create(FileName);
             }
 
             await File.AppendAllTextAsync(FileName, factEntry + Environment.NewLine);
@@ -51,6 +52,30 @@ public class FactService : IFactService
         catch (Exception ex)
         {
             return Results.Problem("Wystąpił nieoczkiwany błąd: " + ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    public async Task<IResult> GetSavedFactsAsync()
+    {
+        try
+        {
+            if (!File.Exists(FileName))
+            {
+                return Results.Ok(new List<FactResponse>());
+            }
+
+            var lines = await File.ReadAllLinesAsync(FileName);
+            var facts = lines
+                .Select(line => JsonSerializer.Deserialize<FactResponse>(line))
+                .Where(fact => fact != null)
+                .ToList();
+
+            return Results.Ok(facts);
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem("Wystąpił nieoczekiwany błąd: " + ex.Message,
                 statusCode: StatusCodes.Status500InternalServerError);
         }
     }

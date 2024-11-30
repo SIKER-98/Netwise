@@ -19,4 +19,10 @@ public class FactController : ControllerBase
     {
         return await _factService.FetchAndSaveFactAsync();
     }
+
+    [HttpGet("all")]
+    public async Task<IResult> GetAllFacts()
+    {
+        return await _factService.GetSavedFactsAsync();
+    }
 }
